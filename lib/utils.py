@@ -56,9 +56,9 @@ def validate_url(string):
 
 
 def get_node_ip():
+    interface = None
     if arch in ('armv6l', 'armv7l'):
 
-        interface = None
         for n in range(10):
             iface = 'eth{}'.format(n)
             try:
@@ -79,26 +79,19 @@ def get_node_ip():
                     interface = iface
                     break
 
-        if not interface:
+    if not interface:
+        # Fall back to grepping netstat output
+        try:
+            # Returns the node's IP, for the interface that is being used as the default gateway.
+            # This should work on both MacOS X and Linux.
+            interface = grep(netstat('-nr'), '-e', '^default', '-e' '^0.0.0.0').split()[-1]
+        except:
             raise Exception("No active network connection found.")
 
-        try:
-            my_ip = ifaddresses(interface)[2][0]['addr']
-            return my_ip
-        except KeyError:
-            raise Exception("Unable to retrieve an IP.")
-
-    else:
-        """Returns the node's IP, for the interface
-        that is being used as the default gateway.
-        This shuld work on both MacOS X and Linux."""
-
-        try:
-            default_interface = grep(netstat('-nr'), '-e', '^default', '-e' '^0.0.0.0').split()[-1]
-            my_ip = ifaddresses(default_interface)[2][0]['addr']
-            return my_ip
-        except:
-            raise Exception("Unable to resolve local IP address.")
+    try:
+        return ifaddresses(interface)[2][0]['addr']
+    except:
+        raise Exception("Unable to resolve local IP address.")
 
 
 def get_video_duration(file):
@@ -239,3 +232,4 @@ def template_handle_unicode(value):
     if isinstance(value, str):
         return value.decode('utf-8')
     return unicode(value)
+
